@@ -1,5 +1,6 @@
 package org.acme;
 
+import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -17,16 +18,16 @@ public class AwardIntervalResources {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, List<ProducerInterval>> getAll(){
+    public Uni<Map<String, List<ProducerInterval>>> getAll(){
         return movieService.getAwardIntervals();
     }
+    
 
     @GET
     @Path("/minmax")
     @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, List<ProducerInterval>> getMinAndMax() {
+    public Uni<Map<String, List<ProducerInterval>>> getMinAndMax() {
         return movieService.getMinAndMaxIntervals();
-}
-
+    }
 }
 

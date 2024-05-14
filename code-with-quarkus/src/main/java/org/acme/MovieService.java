@@ -4,6 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.transaction.Transactional;
 import io.quarkus.runtime.StartupEvent;
+import io.smallrye.mutiny.Uni;
+
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.CSVParser;
@@ -47,7 +49,7 @@ public class MovieService {
         }
     }
 
-    public List<Movie> getAllMovies() {
+    public Uni<List<Movie>> getAllMovies() {
         return Movie.listAll();
     }
 
@@ -57,64 +59,68 @@ public class MovieService {
     }
 
     @Transactional
-    public Map<String, List<ProducerInterval>> getAwardIntervals() {
-        List<Movie> movies = getAllMovies();
-        Map<String, List<Movie>> moviesByProducer = movies.stream()
-                .filter(Movie::isWinner)
-                .flatMap(movie -> Arrays.stream(movie.getProducers().split(";| e | and "))
-                        .map(producer -> new AbstractMap.SimpleEntry<>(producer.strip(), movie)))
-                .collect(Collectors.groupingBy(Map.Entry::getKey,
-                        Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
+    public Uni<Map<String, List<ProducerInterval>>> getAwardIntervals() {
+        return getAllMovies().onItem().transform(movies -> {
+            Map<String, List<Movie>> moviesByProducer = movies.stream()
+                    .filter(Movie::isWinner)
+                    .flatMap(movie -> Arrays.stream(movie.getProducers().split(";| e | and "))
+                            .map(producer -> new AbstractMap.SimpleEntry<>(producer.strip(), movie)))
+                    .collect(Collectors.groupingBy(Map.Entry::getKey,
+                            Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
 
-        Map<String, List<ProducerInterval>> intervalsByProducer = new HashMap<>();
-        for (Map.Entry<String, List<Movie>> entry : moviesByProducer.entrySet()) {
-            String producer = entry.getKey();
-            List<Movie> producerMovies = entry.getValue();
-            producerMovies.sort(Comparator.comparing(Movie::getReleaseYear));
+            Map<String, List<ProducerInterval>> intervalsByProducer = new HashMap<>();
+            for (Map.Entry<String, List<Movie>> entry : moviesByProducer.entrySet()) {
+                String producer = entry.getKey();
+                List<Movie> producerMovies = entry.getValue();
+                producerMovies.sort(Comparator.comparing(Movie::getReleaseYear));
 
-            List<ProducerInterval> intervals = new ArrayList<>();
-            for (int i = 1; i < producerMovies.size(); i++) {
-                Movie previousMovie = producerMovies.get(i - 1);
-                Movie currentMovie = producerMovies.get(i);
-                int interval = currentMovie.getReleaseYear() - previousMovie.getReleaseYear();
-                intervals.add(new ProducerInterval(producer, interval, previousMovie.getReleaseYear(),
-                        currentMovie.getReleaseYear()));
-            }
-            intervalsByProducer.put(producer, intervals);
-        }
-
-        return intervalsByProducer;
-    }
-    public Map<String, List<ProducerInterval>> getMinAndMaxIntervals() {
-    Map<String, List<ProducerInterval>> awardIntervals = getAwardIntervals();
-    List<ProducerInterval> minIntervals = new ArrayList<>();
-    List<ProducerInterval> maxIntervals = new ArrayList<>();
-    int minInterval = Integer.MAX_VALUE;
-    int maxInterval = Integer.MIN_VALUE;
-
-    for (List<ProducerInterval> intervals : awardIntervals.values()) {
-        for (ProducerInterval interval : intervals) {
-            if (interval.getInterval() < minInterval) {
-                minInterval = interval.getInterval();
-                minIntervals.clear();
-                minIntervals.add(interval);
-            } else if (interval.getInterval() == minInterval) {
-                minIntervals.add(interval);
+                List<ProducerInterval> intervals = new ArrayList<>();
+                for (int i = 1; i < producerMovies.size(); i++) {
+                    Movie previousMovie = producerMovies.get(i - 1);
+                    Movie currentMovie = producerMovies.get(i);
+                    int interval = currentMovie.getReleaseYear() - previousMovie.getReleaseYear();
+                    intervals.add(new ProducerInterval(producer, interval, previousMovie.getReleaseYear(),
+                            currentMovie.getReleaseYear()));
+                }
+                intervalsByProducer.put(producer, intervals);
             }
 
-            if (interval.getInterval() > maxInterval) {
-                maxInterval = interval.getInterval();
-                maxIntervals.clear();
-                maxIntervals.add(interval);
-            } else if (interval.getInterval() == maxInterval) {
-                maxIntervals.add(interval);
-            }
-        }
+            return intervalsByProducer;
+        });
     }
 
-    Map<String, List<ProducerInterval>> result = new HashMap<>();
-    result.put("min", minIntervals);
-    result.put("max", maxIntervals);
-    return result;
-}
+    public Uni<Map<String, List<ProducerInterval>>> getMinAndMaxIntervals() {
+        return getAwardIntervals().onItem().transform(awardIntervals -> {
+            List<ProducerInterval> minIntervals = new ArrayList<>();
+            List<ProducerInterval> maxIntervals = new ArrayList<>();
+            int minInterval = Integer.MAX_VALUE;
+            int maxInterval = Integer.MIN_VALUE;
+    
+            for (List<ProducerInterval> intervals : awardIntervals.values()) {
+                for (ProducerInterval interval : intervals) {
+                    if (interval.getInterval() < minInterval) {
+                        minInterval = interval.getInterval();
+                        minIntervals.clear();
+                        minIntervals.add(interval);
+                    } else if (interval.getInterval() == minInterval) {
+                        minIntervals.add(interval);
+                    }
+    
+                    if (interval.getInterval() > maxInterval) {
+                        maxInterval = interval.getInterval();
+                        maxIntervals.clear();
+                        maxIntervals.add(interval);
+                    } else if (interval.getInterval() == maxInterval) {
+                        maxIntervals.add(interval);
+                    }
+                }
+            }
+    
+            Map<String, List<ProducerInterval>> result = new HashMap<>();
+            result.put("min", minIntervals);
+            result.put("max", maxIntervals);
+            return result;
+        });
+    }
+    
 }
