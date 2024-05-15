@@ -2,9 +2,14 @@ package org.acme;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.inject.spi.CDI;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.Vertx;
 
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
@@ -22,6 +27,12 @@ public class MovieService {
 
     @Transactional
     void onStart(@Observes StartupEvent ev) {
+        // Chame o método processCSV dentro de um contexto Vertx
+        Vertx vertx = CDI.current().select(Vertx.class).get();
+        vertx.runOnContext(v -> processCSV());
+    }
+
+    void processCSV() {
         String filePath = "C:/Users/Ebenezer/Documents/GitHub/quarkus-trabalho/code-with-quarkus/src/main/java/org/acme/movielist.csv";
         try (Reader reader = new FileReader(filePath);
                 CSVParser csvParser = new CSVParser(reader,
@@ -49,6 +60,9 @@ public class MovieService {
         }
     }
 
+    @GET
+    @Path("movies")
+    @WithTransaction
     public Uni<List<Movie>> getAllMovies() {
         return Movie.listAll();
     }
