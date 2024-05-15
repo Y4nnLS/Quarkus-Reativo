@@ -37,7 +37,6 @@ public class MovieService {
         try (Reader reader = new FileReader(filePath);
                 CSVParser csvParser = new CSVParser(reader,
                         CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
-
             for (CSVRecord record : csvParser) {
                 Movie movie = new Movie();
                 String yearString = record.get("year");
@@ -45,19 +44,24 @@ public class MovieService {
                     int releaseYear = Integer.parseInt(yearString);
                     movie.setReleaseYear(releaseYear);
                 } catch (NumberFormatException e) {
-                    System.err.println("Invalid release year format: " + yearString);
+                    System.err.println("Formato de ano de lançamento inválido: " + yearString);
                     continue;
                 }
                 movie.setTitle(record.get("title"));
                 movie.setStudios(record.get("studios"));
                 movie.setProducers(record.get("producers"));
                 movie.setWinner("yes".equals(record.get("winner")));
-                movie.persist();
+                persistMovie(movie);
             }
-            System.out.println("File processing completed.");
+            System.out.println("Processamento do arquivo concluído.");
         } catch (Exception e) {
-            System.err.println("Error processing CSV file: " + e.getMessage());
+            System.err.println("Erro ao processar o arquivo CSV: " + e.getMessage());
         }
+    }
+
+    @Transactional
+    void persistMovie(Movie movie) {
+        movie.persist();
     }
 
     @GET
