@@ -70,6 +70,7 @@ public class Movie extends PanacheEntity {
     }
     public Movie(){
     }
+    
     public Movie(String title, int releaseYear, String studios, String producers, boolean winner) {
         this.title = title;
         this.releaseYear = releaseYear;

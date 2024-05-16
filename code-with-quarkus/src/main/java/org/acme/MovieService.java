@@ -6,10 +6,10 @@ import jakarta.enterprise.inject.spi.CDI;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
-// import io.quarkus.hibernate.reactive.panache.Panache;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.vertx.core.Vertx;
 
 import org.apache.commons.csv.CSVFormat;
@@ -27,9 +27,11 @@ import java.util.stream.Collectors;
 public class MovieService {
 
     void onStart(@Observes StartupEvent ev) {
-        // Chame o método processCSV dentro de um contexto Vertx
         Vertx vertx = CDI.current().select(Vertx.class).get();
-        vertx.runOnContext(v -> processCSV().await().indefinitely());
+        vertx.runOnContext(v -> processCSV().subscribe().with(
+                item -> System.out.println("Processamento do arquivo concluído......"),
+                failure -> System.err
+                        .println("Erro ao processar o arquivo CSV::::::::::::::::::::::: " + failure.getMessage())));
     }
 
     Uni<Void> processCSV() {
@@ -52,22 +54,28 @@ public class MovieService {
                     movie.setStudios(record.get("studios"));
                     movie.setProducers(record.get("producers"));
                     movie.setWinner("yes".equals(record.get("winner")));
-                    System.out.println("entrou1");
+
+                    System.out.println(movie);
                     persistMovie(movie);
-                    System.out.println("entrou2");
                 }
                 System.out.println("Processamento do arquivo concluído.");
             } catch (Exception e) {
-                System.err.println("Erro ao processar o arquivo CSV: " + e.getMessage());
+
+                System.err.println(":::Erro ao processar o arquivo CSV: " + e.getMessage());
             }
         });
     }
 
     @Transactional
     void persistMovie(Movie movie) {
-        System.out.println("entrou persist");
-        movie.persist();
+        System.out.println("aaaaaaaaaaaaaaaaaaaa");
+        Uni.createFrom().item(movie)
+            .runSubscriptionOn(Infrastructure.getDefaultExecutor())
+            .onItem().transformToUni(m -> m.persist()
+                .onItem().invoke(() -> System.out.println("Movie persisted")))
+            .onItem().invoke(ignore -> System.out.println("bbbbbbbbbbbbbbbbb"));
     }
+    
 
     @GET
     @Path("movies")
@@ -118,7 +126,7 @@ public class MovieService {
             List<ProducerInterval> maxIntervals = new ArrayList<>();
             int minInterval = Integer.MAX_VALUE;
             int maxInterval = Integer.MIN_VALUE;
-    
+
             for (List<ProducerInterval> intervals : awardIntervals.values()) {
                 for (ProducerInterval interval : intervals) {
                     if (interval.getInterval() < minInterval) {
@@ -128,7 +136,7 @@ public class MovieService {
                     } else if (interval.getInterval() == minInterval) {
                         minIntervals.add(interval);
                     }
-    
+
                     if (interval.getInterval() > maxInterval) {
                         maxInterval = interval.getInterval();
                         maxIntervals.clear();
@@ -138,12 +146,12 @@ public class MovieService {
                     }
                 }
             }
-    
+
             Map<String, List<ProducerInterval>> result = new HashMap<>();
             result.put("min", minIntervals);
             result.put("max", maxIntervals);
             return result;
         });
     }
-    
+
 }
