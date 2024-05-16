@@ -1,16 +1,18 @@
 package org.acme;
 
-import io.quarkus.hibernate.reactive.panache.PanacheEntityBase;
+import io.quarkus.hibernate.reactive.panache.PanacheEntity;
+import jakarta.persistence.Cacheable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+// import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
+@Cacheable
 @Table(name = "movies")
-public class Movie extends PanacheEntityBase {
-    @Id
-    private Long id;
+public class Movie extends PanacheEntity {
+    // @Id
+    // private Long id;
 
     @Column(name = "release_year")
     private int releaseYear;
@@ -64,6 +66,15 @@ public class Movie extends PanacheEntityBase {
     }
 
     public void setWinner(boolean winner) {
+        this.winner = winner;
+    }
+    public Movie(){
+    }
+    public Movie(String title, int releaseYear, String studios, String producers, boolean winner) {
+        this.title = title;
+        this.releaseYear = releaseYear;
+        this.studios = studios;
+        this.producers = producers;
         this.winner = winner;
     }
 

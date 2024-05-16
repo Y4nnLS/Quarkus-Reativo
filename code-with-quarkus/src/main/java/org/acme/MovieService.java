@@ -6,6 +6,7 @@ import jakarta.enterprise.inject.spi.CDI;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+// import io.quarkus.hibernate.reactive.panache.Panache;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
@@ -25,42 +26,46 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class MovieService {
 
-    @Transactional
     void onStart(@Observes StartupEvent ev) {
         // Chame o método processCSV dentro de um contexto Vertx
         Vertx vertx = CDI.current().select(Vertx.class).get();
-        vertx.runOnContext(v -> processCSV());
+        vertx.runOnContext(v -> processCSV().await().indefinitely());
     }
 
-    void processCSV() {
-        String filePath = "C:/Users/Ebenezer/Documents/GitHub/quarkus-trabalho/code-with-quarkus/src/main/java/org/acme/movielist.csv";
-        try (Reader reader = new FileReader(filePath);
-                CSVParser csvParser = new CSVParser(reader,
-                        CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
-            for (CSVRecord record : csvParser) {
-                Movie movie = new Movie();
-                String yearString = record.get("year");
-                try {
-                    int releaseYear = Integer.parseInt(yearString);
-                    movie.setReleaseYear(releaseYear);
-                } catch (NumberFormatException e) {
-                    System.err.println("Formato de ano de lançamento inválido: " + yearString);
-                    continue;
+    Uni<Void> processCSV() {
+        return Uni.createFrom().voidItem().onItem().invoke(() -> {
+            String filePath = "C:/Users/Ebenezer/Documents/GitHub/quarkus-trabalho/code-with-quarkus/src/main/java/org/acme/movielist.csv";
+            try (Reader reader = new FileReader(filePath);
+                    CSVParser csvParser = new CSVParser(reader,
+                            CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
+                for (CSVRecord record : csvParser) {
+                    Movie movie = new Movie();
+                    String yearString = record.get("year");
+                    try {
+                        int releaseYear = Integer.parseInt(yearString);
+                        movie.setReleaseYear(releaseYear);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Formato de ano de lançamento inválido: " + yearString);
+                        continue;
+                    }
+                    movie.setTitle(record.get("title"));
+                    movie.setStudios(record.get("studios"));
+                    movie.setProducers(record.get("producers"));
+                    movie.setWinner("yes".equals(record.get("winner")));
+                    System.out.println("entrou1");
+                    persistMovie(movie);
+                    System.out.println("entrou2");
                 }
-                movie.setTitle(record.get("title"));
-                movie.setStudios(record.get("studios"));
-                movie.setProducers(record.get("producers"));
-                movie.setWinner("yes".equals(record.get("winner")));
-                persistMovie(movie);
+                System.out.println("Processamento do arquivo concluído.");
+            } catch (Exception e) {
+                System.err.println("Erro ao processar o arquivo CSV: " + e.getMessage());
             }
-            System.out.println("Processamento do arquivo concluído.");
-        } catch (Exception e) {
-            System.err.println("Erro ao processar o arquivo CSV: " + e.getMessage());
-        }
+        });
     }
 
     @Transactional
     void persistMovie(Movie movie) {
+        System.out.println("entrou persist");
         movie.persist();
     }
 
