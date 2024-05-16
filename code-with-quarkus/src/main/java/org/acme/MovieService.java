@@ -70,12 +70,11 @@ public class MovieService {
     void persistMovie(Movie movie) {
         System.out.println("aaaaaaaaaaaaaaaaaaaa");
         Uni.createFrom().item(movie)
-            .runSubscriptionOn(Infrastructure.getDefaultExecutor())
-            .onItem().transformToUni(m -> m.persist()
-                .onItem().invoke(() -> System.out.println("Movie persisted")))
-            .onItem().invoke(ignore -> System.out.println("bbbbbbbbbbbbbbbbb"));
+                .emitOn(Infrastructure.getDefaultExecutor())
+                .onItem().transformToUni(m -> m.persist()
+                        .onItem().invoke(() -> System.out.println("Movie persisted")))
+                .onItem().invoke(ignore -> System.out.println("bbbbbbbbbbbbbbbbb"));
     }
-    
 
     @GET
     @Path("movies")
