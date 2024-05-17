@@ -1,6 +1,5 @@
--- This file allow to write SQL commands that will be emitted in test and dev.
--- The commands are commented as their support depends of the database
--- insert into myentity (id, field) values(1, 'field-1');
--- insert into myentity (id, field) values(2, 'field-2');
--- insert into myentity (id, field) values(3, 'field-3');
--- alter sequence myentity_seq restart with 4;
+INSERT INTO movies(id,release_year,title,studios,producers,winner) VALUES (1,2020,'teste1','teste1','teste1',true);
+INSERT INTO movies(id,release_year,title,studios,producers,winner) VALUES (2,2020,'teste2','teste2','teste2',true);
+INSERT INTO movies(id,release_year,title,studios,producers,winner) VALUES (3,2020,'teste3','teste3','teste3',true);
+INSERT INTO movies(id,release_year,title,studios,producers,winner) VALUES (4,2020,'teste4','teste4','teste4',true);
+ALTER SEQUENCE movies_SEQ RESTART WITH 4;

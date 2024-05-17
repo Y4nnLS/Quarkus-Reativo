@@ -28,15 +28,18 @@ public class MovieService {
 
     void onStart(@Observes StartupEvent ev) {
         Vertx vertx = CDI.current().select(Vertx.class).get();
-        vertx.runOnContext(v -> processCSV().subscribe().with(
+        vertx.runOnContext(v -> processCSV()
+            .emitOn(Infrastructure.getDefaultExecutor())
+            .subscribe().with(
                 item -> System.out.println("Processamento do arquivo concluído......"),
                 failure -> System.err
                         .println("Erro ao processar o arquivo CSV::::::::::::::::::::::: " + failure.getMessage())));
     }
+    
 
     Uni<Void> processCSV() {
         return Uni.createFrom().voidItem().onItem().invoke(() -> {
-            String filePath = "C:/Users/Ebenezer/Documents/GitHub/quarkus-trabalho/code-with-quarkus/src/main/java/org/acme/movielist.csv";
+            String filePath = "C:/Users/Ebenezer/Documents/GitHub/Quarkus-Reativo/code-with-quarkus/src/main/java/org/acme/movielist copy.csv";
             try (Reader reader = new FileReader(filePath);
                     CSVParser csvParser = new CSVParser(reader,
                             CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
@@ -55,7 +58,7 @@ public class MovieService {
                     movie.setProducers(record.get("producers"));
                     movie.setWinner("yes".equals(record.get("winner")));
 
-                    System.out.println(movie);
+                    // System.out.println(movie);
                     persistMovie(movie);
                 }
                 System.out.println("Processamento do arquivo concluído.");
@@ -68,13 +71,28 @@ public class MovieService {
 
     @Transactional
     void persistMovie(Movie movie) {
-        System.out.println("aaaaaaaaaaaaaaaaaaaa");
-        Uni.createFrom().item(movie)
-                .emitOn(Infrastructure.getDefaultExecutor())
-                .onItem().transformToUni(m -> m.persist()
-                        .onItem().invoke(() -> System.out.println("Movie persisted")))
-                .onItem().invoke(ignore -> System.out.println("bbbbbbbbbbbbbbbbb"));
+        Vertx vertx = CDI.current().select(Vertx.class).get();
+        vertx.runOnContext(v -> {
+            System.out.println("Início do método persistMovie");
+    
+            if (movie == null) {
+                System.err.println("Erro: o objeto movie é nulo");
+                return;
+            } else {
+                System.out.println(movie);
+            }
+    
+            Movie.persist(movie).subscribe().with(
+                    persisted -> System.out.println("Filme persistido com sucesso"),
+                    failure -> {
+                        System.err.println("Erro ao persistir o filme: " + failure.getMessage());
+                        System.out.println("Falha na persistência do filme");
+                    });
+    
+            System.out.println("Final do método persistMovie");
+        });
     }
+    
 
     @GET
     @Path("movies")

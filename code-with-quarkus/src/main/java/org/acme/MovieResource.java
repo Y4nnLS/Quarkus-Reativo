@@ -35,11 +35,6 @@ public class MovieResource {
         return Movie.listAll();
     }
 
-
-
-
-
-
     @Provider
     public static class ErrorMapper implements ExceptionMapper<Exception> {
 
