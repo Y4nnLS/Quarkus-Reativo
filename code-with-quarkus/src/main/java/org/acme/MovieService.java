@@ -29,13 +29,13 @@ public class MovieService {
     void onStart(@Observes StartupEvent ev) {
         Vertx vertx = CDI.current().select(Vertx.class).get();
         vertx.runOnContext(v -> processCSV()
-            .emitOn(Infrastructure.getDefaultExecutor())
-            .subscribe().with(
-                item -> System.out.println("Processamento do arquivo concluído......"),
-                failure -> System.err
-                        .println("Erro ao processar o arquivo CSV::::::::::::::::::::::: " + failure.getMessage())));
+                .emitOn(Infrastructure.getDefaultExecutor())
+                .subscribe().with(
+                        item -> System.out.println("Processamento do arquivo concluído......"),
+                        failure -> System.err
+                                .println("Erro ao processar o arquivo CSV::::::::::::::::::::::: "
+                                        + failure.getMessage())));
     }
-    
 
     Uni<Void> processCSV() {
         return Uni.createFrom().voidItem().onItem().invoke(() -> {
@@ -74,25 +74,31 @@ public class MovieService {
         Vertx vertx = CDI.current().select(Vertx.class).get();
         vertx.runOnContext(v -> {
             System.out.println("Início do método persistMovie");
-    
+
             if (movie == null) {
                 System.err.println("Erro: o objeto movie é nulo");
                 return;
             } else {
                 System.out.println(movie);
             }
-    
-            Movie.persist(movie).subscribe().with(
-                    persisted -> System.out.println("Filme persistido com sucesso"),
-                    failure -> {
-                        System.err.println("Erro ao persistir o filme: " + failure.getMessage());
-                        System.out.println("Falha na persistência do filme");
-                    });
-    
+
+            try {
+                // Mova a transação para um thread de worker
+                Infrastructure.getDefaultExecutor().execute(() -> {
+                    Movie.persist(movie).subscribe().with(
+                            persisted -> System.out.println("Filme persistido com sucesso"),
+                            failure -> {
+                                System.err.println("Erro ao persistir o filme: " + failure.getMessage());
+                                System.out.println("Falha na persistência do filme");
+                            });
+                });
+            } catch (Exception e) {
+                System.err.println("Exceção ao persistir o filme: " + e.getMessage());
+            }
+
             System.out.println("Final do método persistMovie");
         });
     }
-    
 
     @GET
     @Path("movies")

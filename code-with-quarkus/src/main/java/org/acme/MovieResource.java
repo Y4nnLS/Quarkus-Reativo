@@ -4,16 +4,23 @@ import io.smallrye.mutiny.CompositeException;
 // import io.quarkus.panache.common.Sort;
 // import io.quarkus.hibernate.reactive.panache.common.WithSession;
 // import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
-import jakarta.enterprise.context.ApplicationScoped;
+// import io.smallrye.mutiny.Uni;
+// import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
+import java.net.URI;
 // import jakarta.ws.rs.Produces;
 // import jakarta.ws.rs.core.MediaType;
 import java.util.List;
@@ -25,14 +32,29 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 
 @Path("/movies")
-@ApplicationScoped
+@Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 public class MovieResource {
 
     private static final Logger LOGGER = Logger.getLogger(MovieResource.class.getName());
     
+    @Inject
+    MovieRepository movieRepository;
+
     @GET
-    public Uni<List<Movie>> getAll() {
-        return Movie.listAll();
+    public Response getAll() {
+        List<Movie> movies = movieRepository.listAll();
+        return Response.ok(movies).build();
+    }
+
+    @POST
+    @Transactional
+    public Response create(Movie movie){
+        movieRepository.persist(movie);
+        if (movieRepository.isPersistent(movie)) {
+            return Response.created(URI.create("/movies/"+ movie)).build();
+        }
+        return Response.status(Status.BAD_REQUEST).build();
     }
 
     @Provider
