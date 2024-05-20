@@ -37,7 +37,6 @@
       <groupId>io.smallrye</groupId>
       <artifactId>smallrye-context-propagation</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-rest-jsonb</artifactId>

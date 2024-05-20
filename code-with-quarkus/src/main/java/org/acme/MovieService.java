@@ -69,7 +69,7 @@ public class MovieService {
         });
     }
 
-    @Transactional
+    // @Transactional
     void persistMovie(Movie movie) {
         Vertx vertx = CDI.current().select(Vertx.class).get();
         vertx.runOnContext(v -> {
