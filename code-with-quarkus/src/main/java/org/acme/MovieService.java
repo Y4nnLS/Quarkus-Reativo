@@ -3,10 +3,12 @@ package org.acme;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.spi.CDI;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
-import io.quarkus.hibernate.reactive.panache.common.Panache;
+// import io.quarkus.hibernate.reactive.panache.common.Panache;
+// import io.quarkus.hibernate.reactive.panache.PanacheRepository;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.Vertx;
@@ -21,6 +23,9 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class MovieService {
+
+    @Inject
+    MovieRepository movieRepository;
 
     void onStart(@Observes StartupEvent ev) {
         Vertx vertx = CDI.current().select(Vertx.class).get();
@@ -54,7 +59,7 @@ public class MovieService {
                     movie.setWinner("yes".equals(record.get("winner")));
 
                     System.out.println("Filme: " + movie);
-                    persistMovie(movie);
+                    persist(movie);
                 }
                 System.out.println("Processamento do arquivo concluído.");
             } catch (Exception e) {
@@ -63,16 +68,10 @@ public class MovieService {
         });
     }
 
-    @Transactional
-    void persistMovie(Movie movie) {
-        try {
-            Panache.withTransaction(() -> {
-                movie.persist();
-                return null;
-            });
-        } catch (Exception e) {
-            System.err.println("Erro ao persistir o filme: " + e.getMessage());
-        }
+    // @Transactional
+    public Uni<Void> persist(Movie movie) {
+        movieRepository.persist(movie);
+        return Uni.createFrom().nullItem();    
     }
 
     @GET
