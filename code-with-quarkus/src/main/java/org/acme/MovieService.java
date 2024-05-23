@@ -6,20 +6,16 @@ import jakarta.enterprise.inject.spi.CDI;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
-import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.quarkus.hibernate.reactive.panache.common.Panache;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.vertx.core.Vertx;
-
 import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 
 import java.io.FileReader;
 import java.io.Reader;
-import java.util.HashMap;
-import java.util.List;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,7 +25,6 @@ public class MovieService {
     void onStart(@Observes StartupEvent ev) {
         Vertx vertx = CDI.current().select(Vertx.class).get();
         vertx.runOnContext(v -> processCSV()
-                .emitOn(Infrastructure.getDefaultExecutor())
                 .subscribe().with(
                         item -> System.out.println("Processamento do arquivo concluído......"),
                         failure -> System.err
@@ -41,8 +36,8 @@ public class MovieService {
         return Uni.createFrom().voidItem().onItem().invoke(() -> {
             String filePath = "C:/Users/Ebenezer/Documents/GitHub/Quarkus-Reativo/code-with-quarkus/src/main/java/org/acme/movielist copy.csv";
             try (Reader reader = new FileReader(filePath);
-                    CSVParser csvParser = new CSVParser(reader,
-                            CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
+                 CSVParser csvParser = new CSVParser(reader,
+                         CSVFormat.DEFAULT.withDelimiter(';').withFirstRecordAsHeader())) {
                 for (CSVRecord record : csvParser) {
                     Movie movie = new Movie();
                     String yearString = record.get("year");
@@ -58,51 +53,30 @@ public class MovieService {
                     movie.setProducers(record.get("producers"));
                     movie.setWinner("yes".equals(record.get("winner")));
 
-                    // System.out.println(movie);
+                    System.out.println("Filme: " + movie);
                     persistMovie(movie);
                 }
                 System.out.println("Processamento do arquivo concluído.");
             } catch (Exception e) {
-
-                System.err.println(":::Erro ao processar o arquivo CSV: " + e.getMessage());
+                System.err.println("Erro ao processar o arquivo CSV: " + e.getMessage());
             }
         });
     }
 
-    // @Transactional
+    @Transactional
     void persistMovie(Movie movie) {
-        Vertx vertx = CDI.current().select(Vertx.class).get();
-        vertx.runOnContext(v -> {
-            System.out.println("Início do método persistMovie");
-
-            if (movie == null) {
-                System.err.println("Erro: o objeto movie é nulo");
-                return;
-            } else {
-                System.out.println(movie);
-            }
-
-            try {
-                // Mova a transação para um thread de worker
-                Infrastructure.getDefaultExecutor().execute(() -> {
-                    Movie.persist(movie).subscribe().with(
-                            persisted -> System.out.println("Filme persistido com sucesso"),
-                            failure -> {
-                                System.err.println("Erro ao persistir o filme: " + failure.getMessage());
-                                System.out.println("Falha na persistência do filme");
-                            });
-                });
-            } catch (Exception e) {
-                System.err.println("Exceção ao persistir o filme: " + e.getMessage());
-            }
-
-            System.out.println("Final do método persistMovie");
-        });
+        try {
+            Panache.withTransaction(() -> {
+                movie.persist();
+                return null;
+            });
+        } catch (Exception e) {
+            System.err.println("Erro ao persistir o filme: " + e.getMessage());
+        }
     }
 
     @GET
     @Path("movies")
-    @WithTransaction
     public Uni<List<Movie>> getAllMovies() {
         return Movie.listAll();
     }
