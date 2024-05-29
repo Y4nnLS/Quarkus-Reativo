@@ -149,26 +149,50 @@ public class MovieResource {
 
                     List<Map<String, Object>> minList = new ArrayList<>();
                     List<Map<String, Object>> maxList = new ArrayList<>();
+                    int shortestInterval = Integer.MAX_VALUE;
+                    int longestInterval = Integer.MIN_VALUE;
+
                     for (Map.Entry<String, List<Integer>> entry : producerAwards.entrySet()) {
-                        if (entry.getValue().size() >= 2) {
-                            List<Integer> sortedAwards = entry.getValue();
-                            Collections.sort(sortedAwards);
-                            int shortestInterval = sortedAwards.get(1) - sortedAwards.get(0);
-                            int longestInterval = sortedAwards.get(sortedAwards.size() - 1) - sortedAwards.get(0);
-
-                            Map<String, Object> minMap = new HashMap<>();
-                            minMap.put("producer", entry.getKey());
-                            minMap.put("interval", shortestInterval);
-                            minMap.put("previousWin", sortedAwards.get(0));
-                            minMap.put("followingWin", sortedAwards.get(1));
-                            minList.add(minMap);
-
-                            Map<String, Object> maxMap = new HashMap<>();
-                            maxMap.put("producer", entry.getKey());
-                            maxMap.put("interval", longestInterval);
-                            maxMap.put("previousWin", sortedAwards.get(0));
-                            maxMap.put("followingWin", sortedAwards.get(sortedAwards.size() - 1));
-                            maxList.add(maxMap);
+                        List<Integer> awards = entry.getValue();
+                        if (awards.size() >= 2) {
+                            Collections.sort(awards);
+                            for (int i = 1; i < awards.size(); i++) {
+                                int interval = awards.get(i) - awards.get(i - 1);
+                                if (interval < shortestInterval) {
+                                    shortestInterval = interval;
+                                    minList.clear();
+                                    Map<String, Object> minMap = new HashMap<>();
+                                    minMap.put("producer", entry.getKey());
+                                    minMap.put("interval", interval);
+                                    minMap.put("previousWin", awards.get(i - 1));
+                                    minMap.put("followingWin", awards.get(i));
+                                    minList.add(minMap);
+                                } else if (interval == shortestInterval) {
+                                    Map<String, Object> minMap = new HashMap<>();
+                                    minMap.put("producer", entry.getKey());
+                                    minMap.put("interval", interval);
+                                    minMap.put("previousWin", awards.get(i - 1));
+                                    minMap.put("followingWin", awards.get(i));
+                                    minList.add(minMap);
+                                }
+                                if (interval > longestInterval) {
+                                    longestInterval = interval;
+                                    maxList.clear();
+                                    Map<String, Object> maxMap = new HashMap<>();
+                                    maxMap.put("producer", entry.getKey());
+                                    maxMap.put("interval", interval);
+                                    maxMap.put("previousWin", awards.get(i - 1));
+                                    maxMap.put("followingWin", awards.get(i));
+                                    maxList.add(maxMap);
+                                } else if (interval == longestInterval) {
+                                    Map<String, Object> maxMap = new HashMap<>();
+                                    maxMap.put("producer", entry.getKey());
+                                    maxMap.put("interval", interval);
+                                    maxMap.put("previousWin", awards.get(i - 1));
+                                    maxMap.put("followingWin", awards.get(i));
+                                    maxList.add(maxMap);
+                                }
+                            }
                         }
                     }
 
